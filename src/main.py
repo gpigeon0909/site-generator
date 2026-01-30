@@ -1,10 +1,13 @@
 import os
 import shutil
+import sys
 
 from textnode import TextNode, TextType, markdown_to_html_node, extract_title
 
 
-def generate_page(from_path: str, template_path: str, dest_path: str) -> None:
+def generate_page(
+    from_path: str, template_path: str, dest_path: str, basepath: str = "/"
+) -> None:
     """Generate an HTML page from markdown using a template. Writes to dest_path."""
     print(f"Generating page from {from_path} to {dest_path} using {template_path}")
     with open(from_path, encoding="utf-8") as f:
@@ -14,6 +17,7 @@ def generate_page(from_path: str, template_path: str, dest_path: str) -> None:
     html_content = markdown_to_html_node(markdown).to_html()
     title = extract_title(markdown)
     html = template.replace("{{ Title }}", title).replace("{{ Content }}", html_content)
+    html = html.replace('href="/', f'href="{basepath}').replace('src="/', f'src="{basepath}')
     dest_dir = os.path.dirname(dest_path)
     if dest_dir:
         os.makedirs(dest_dir, exist_ok=True)
@@ -40,7 +44,10 @@ def copy_dir_contents(src: str, dest: str) -> None:
 
 
 def generate_pages_recursive(
-    dir_path_content: str, template_path: str, dest_dir_path: str
+    dir_path_content: str,
+    template_path: str,
+    dest_dir_path: str,
+    basepath: str = "/",
 ) -> None:
     """Crawl content dir for .md files and generate HTML into dest dir using the template (same structure)."""
     for dirpath, _dirnames, filenames in os.walk(dir_path_content):
@@ -51,12 +58,13 @@ def generate_pages_recursive(
             rel = os.path.relpath(from_path, dir_path_content)
             dest_rel = os.path.splitext(rel)[0] + ".html"
             dest_path = os.path.join(dest_dir_path, dest_rel)
-            generate_page(from_path, template_path, dest_path)
+            generate_page(from_path, template_path, dest_path, basepath)
 
 
 def main():
-    copy_dir_contents("static", "public")
-    generate_pages_recursive("content", "template.html", "public")
+    basepath = sys.argv[1] if len(sys.argv) > 1 else "/"
+    copy_dir_contents("static", "docs")
+    generate_pages_recursive("content", "template.html", "docs", basepath)
 
 
 if __name__ == "__main__":
